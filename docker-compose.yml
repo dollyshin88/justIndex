@@ -1,0 +1,39 @@
+version: '3.1'
+
+services: 
+    db:
+        image: postgres:10.6-alpine
+        environment: 
+            - POSTGRES_USER=dspostgres
+            - POSTGRES_PASSWORD=dspostgres
+        ports: 
+            - 5432:5432
+
+    server:
+        build: .
+        depends_on: 
+            - db
+        command: >
+            sh -c "
+            pip list &&
+            python manage.py makemigrations &&
+            python manage.py migrate &&
+            gunicorn --workers 5 --threads 4 --timeout 120 --reload justIndex.wsgi:application --bind 0.0.0.0:80"
+        ports: 
+            - 80:80
+        volumes:
+            - ./justIndex/:/usr/src/app/justIndex/
+        environment:
+            - ENV_LABEL=local
+            - DB_HOST=db
+            - DB_PORT=5432
+            - PYTHONBREAKPOINT=ipdb.set_trace
+        stdin_open: true
+        tty: true
+        secrets:
+            - app-config
+
+secrets:
+    app-config:
+        file: $HOME/.envs/justIndex.dev.ini
+        
